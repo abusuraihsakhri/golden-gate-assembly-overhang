@@ -69,7 +69,22 @@ def main(argv=None):
         return 0
 
     if args.command == "batch":
-        with open(args.input, mode="r", encoding="utf-8-sig") as f:
+        # Local path traversal protection
+        import pathlib
+        import os
+        def _safe_path(fp):
+            base = pathlib.Path(os.getcwd()).resolve()
+            target = pathlib.Path(fp).resolve()
+            try:
+                target.relative_to(base)
+            except ValueError:
+                raise ValueError(f"Path traversal blocked: '{fp}' resolves outside allowed directory")
+            return str(target)
+
+        safe_input = _safe_path(args.input)
+        safe_output = _safe_path(args.output)
+
+        with open(safe_input, mode="r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             fieldnames = list(reader.fieldnames or [])
             rows = list(reader)
@@ -77,11 +92,19 @@ def main(argv=None):
         out_fields = fieldnames + ["overall_status", "total_alerts", "critical_count", "consensus_summary"]
         out_rows = []
         for r in rows:
+            # Validate metric values
+            import math
+            p_val = float(r.get("primary_metric", 15.0))
+            s_val = float(r.get("secondary_metric", 5.0))
+            if math.isnan(p_val) or math.isinf(p_val):
+                raise ValueError(f"Invalid primary_metric: {p_val}")
+            if math.isnan(s_val) or math.isinf(s_val):
+                raise ValueError(f"Invalid secondary_metric: {s_val}")
             payload = FrontierPayload(
                 task_id=r.get("task_id", "TASK-01"),
                 target_identifier=r.get("target_identifier", "TARGET-01"),
-                primary_metric=float(r.get("primary_metric", 15.0)),
-                secondary_metric=float(r.get("secondary_metric", 5.0)),
+                primary_metric=p_val,
+                secondary_metric=s_val,
                 status_descriptor=r.get("status_descriptor", "NOMINAL"),
                 is_critical_flag=bool(r.get("is_critical_flag", False)),
             )
@@ -93,7 +116,7 @@ def main(argv=None):
             row_dict["consensus_summary"] = dossier["consensus_summary"]
             out_rows.append(row_dict)
 
-        with open(args.output, mode="w", encoding="utf-8", newline="") as f:
+        with open(safe_output, mode="w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=out_fields)
             writer.writeheader()
             writer.writerows(out_rows)

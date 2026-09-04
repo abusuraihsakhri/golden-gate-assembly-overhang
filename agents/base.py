@@ -8,6 +8,7 @@ import json
 import time
 import hmac
 import hashlib
+import secrets
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
@@ -33,12 +34,51 @@ class ResourceLimitExceededException(Exception):
     pass
 
 
+class PathTraversalException(SecurityException):
+    """Raised when a file path attempts to escape the allowed directory."""
+    pass
+
+
+class InputValidationException(SecurityException):
+    """Raised when input values fail validation checks."""
+    pass
+
+
 def assert_no_phi(text: str) -> None:
     if not text:
         return
     for pattern in PHI_PATTERNS:
         if pattern.search(str(text)):
             raise SecurityException(f"PHI Outbound Guard Violation: Sensitive identifier detected with pattern {pattern.pattern}")
+
+
+def assert_safe_path(filepath: str, allowed_base: Optional[str] = None) -> str:
+    """Validate that a file path does not escape the allowed directory (path traversal protection)."""
+    import pathlib
+    base = pathlib.Path(allowed_base or os.getcwd()).resolve()
+    target = pathlib.Path(filepath).resolve()
+    # Ensure the resolved path is within the allowed base directory
+    try:
+        target.relative_to(base)
+    except ValueError:
+        raise PathTraversalException(
+            f"Path traversal blocked: '{filepath}' resolves outside allowed directory '{base}'"
+        )
+    return str(target)
+
+
+def assert_valid_metric(value: float, field_name: str = "metric") -> float:
+    """Validate that a metric value is finite and within acceptable bounds."""
+    import math
+    if not isinstance(value, (int, float)):
+        raise InputValidationException(f"{field_name} must be a number, got {type(value).__name__}")
+    if math.isnan(value) or math.isinf(value):
+        raise InputValidationException(f"{field_name} must be finite, got {value}")
+    # Reasonable bounds for biological measurements (adjust per domain)
+    ABSOLUTE_MAX = 1e9
+    if abs(value) > ABSOLUTE_MAX:
+        raise InputValidationException(f"{field_name} absolute value exceeds maximum ({ABSOLUTE_MAX})")
+    return float(value)
 
 
 class PHIGuard:
@@ -57,7 +97,13 @@ class PHIGuard:
 class AuditTrail:
     """Cryptographic Tamper-Evident HMAC-SHA256 Audit Trail."""
     def __init__(self, secret_key: Optional[str] = None):
-        self.secret_key = (secret_key or os.getenv("AUDIT_SECRET_KEY", "golden-gate-assembly-overhang-master-audit-key-2026")).encode("utf-8")
+        resolved_key = secret_key or os.getenv("AUDIT_SECRET_KEY")
+        if not resolved_key:
+            # Generate a cryptographically secure random key at runtime.
+            # This ensures a default is always available for development/testing,
+            # but production deployments MUST set AUDIT_SECRET_KEY for persistence.
+            resolved_key = secrets.token_hex(32)
+        self.secret_key = resolved_key.encode("utf-8") if isinstance(resolved_key, str) else resolved_key
         self.logs: List[Dict[str, Any]] = []
 
     def log(self, actor: str, actor_tier: str, event_type: str, details: Dict[str, Any]) -> Dict[str, Any]:
@@ -82,10 +128,21 @@ class AuditTrail:
         self.logs.append(entry)
         return entry
 
+    def _compute_signature(self, entry: Dict[str, Any]) -> str:
+        """Recompute the HMAC signature for a given entry to verify it."""
+        sign_string = f"{entry['audit_id']}|{entry['timestamp']}|{entry['actor']}|{entry['actor_tier']}|{entry['event_type']}|{entry['payload_hash']}|{entry['prev_hash']}"
+        return hmac.new(self.secret_key, sign_string.encode("utf-8"), hashlib.sha256).hexdigest()
+
     def verify_integrity(self) -> bool:
+        """Verify both chain linkage and HMAC signatures for all entries."""
         for i, entry in enumerate(self.logs):
+            # Verify chain linkage
             prev = self.logs[i-1]["current_hash"] if i > 0 else "GENESIS_BLOCK_0000000000000000"
             if entry["prev_hash"] != prev:
+                return False
+            # Verify HMAC signature authenticity
+            expected_sig = self._compute_signature(entry)
+            if not hmac.compare_digest(entry["current_hash"], expected_sig):
                 return False
         return True
 
