@@ -14,7 +14,7 @@ supervisor = SystemSupervisor(model_provider="mock")
 
 app = FastAPI(
     title="Golden Gate Assembly Overhang API",
-    description="Enterprise Distributed Component Platform (AI Drug Discovery, Structural Biology & Wet-Lab Robotics)",
+    description="Legacy deterministic numeric threshold auditing with in-memory signed event records.",
     version="3.0.0-ENTERPRISE",
 )
 
