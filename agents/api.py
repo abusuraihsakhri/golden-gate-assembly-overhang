@@ -2,7 +2,9 @@
 FastAPI REST API Server for Golden Gate Assembly Overhang.
 """
 from typing import Dict, Any, List
-from fastapi import FastAPI, HTTPException
+import os
+import secrets
+from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 from .base import AuditLogger, PHIGuard
 from .models import SystemTaskPayload, ConsensusDossier
@@ -51,5 +53,8 @@ def api_chat(req: ChatRequest):
 
 
 @app.get("/api/audit/logs")
-def api_audit_logs():
+def api_audit_logs(x_audit_token: str | None = Header(default=None)):
+    expected = os.environ.get("AUDIT_READ_TOKEN")
+    if not expected or not x_audit_token or not secrets.compare_digest(x_audit_token, expected):
+        raise HTTPException(status_code=403, detail="Audit log access is disabled or unauthorized")
     return {"audit_trail": AuditLogger.get_trail(), "verified": AuditLogger.verify_integrity()}
