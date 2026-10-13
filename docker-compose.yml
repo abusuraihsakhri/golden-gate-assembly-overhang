@@ -1,14 +1,12 @@
-version: '3.8'
-
 services:
   golden-gate-assembly-overhang:
     build: .
-    container_name: golden-gate-assembly-overhang
     ports:
       - "8000:8000"
     environment:
-      - AUDIT_SECRET_KEY=${AUDIT_SECRET_KEY:-please-set-a-strong-random-key-in-env-file}
-      - MODEL_PROVIDER=mock
+      AUDIT_SECRET_KEY: ${AUDIT_SECRET_KEY:?Set AUDIT_SECRET_KEY before starting the service}
+      AUDIT_READ_TOKEN: ${AUDIT_READ_TOKEN:-}
+      MODEL_PROVIDER: mock
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

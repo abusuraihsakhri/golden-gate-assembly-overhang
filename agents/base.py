@@ -8,6 +8,7 @@ import json
 import time
 import hmac
 import hashlib
+import copy
 import secrets
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
@@ -147,7 +148,7 @@ class AuditTrail:
         return True
 
     def get_trail(self) -> List[Dict[str, Any]]:
-        return self.logs
+        return copy.deepcopy(self.logs)
 
 
 GLOBAL_AUDIT = AuditTrail()

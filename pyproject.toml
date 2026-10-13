@@ -17,11 +17,22 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 requires-python = ">=3.9"
-dependencies = []
+dependencies = ["pydantic>=2,<3"]
+
+[project.optional-dependencies]
+server = ["fastapi>=0.110,<1", "uvicorn>=0.29,<1"]
+test = ["pytest>=8,<10"]
 
 [project.scripts]
 golden-gate-assembly-overhang = "golden_gate_agent.cli:main"
+golden-gate-operations = "cli:main"
 
 [project.urls]
 Homepage = "https://github.com/abusuraihsakhri/golden-gate-assembly-overhang"
 Repository = "https://github.com/abusuraihsakhri/golden-gate-assembly-overhang.git"
+
+[tool.setuptools]
+py-modules = ["cli", "enrichment", "simulator", "golden_gate_agent_app"]
+
+[tool.setuptools.packages.find]
+include = ["agents*", "golden_gate_agent*"]

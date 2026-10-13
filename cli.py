@@ -12,6 +12,15 @@ from agents.base import AuditLogger, assert_safe_path, assert_valid_metric
 supervisor = SystemSupervisor(model_provider="mock")
 
 
+def parse_csv_boolean(value):
+    normalized = str(value).strip().lower()
+    if normalized in ("true", "1", "yes", "y"):
+        return True
+    if normalized in ("false", "0", "no", "n", ""):
+        return False
+    raise ValueError(f"Invalid is_critical_flag value: {value!r}")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="golden-gate-assembly-overhang", description="Golden Gate Assembly Overhang")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -89,7 +98,7 @@ def main(argv=None):
             fieldnames = list(reader.fieldnames or [])
             rows = list(reader)
 
-        out_fields = fieldnames + ["overall_urgency", "integrity_status", "total_alerts", "audit_hash"]
+        out_fields = list(dict.fromkeys(fieldnames + ["overall_urgency", "integrity_status", "total_alerts", "audit_hash"]))
         out_rows = []
         for r in rows:
             # Validate metric values
@@ -101,7 +110,7 @@ def main(argv=None):
                 primary_metric=primary,
                 secondary_metric=secondary,
                 status_descriptor=r.get("status_descriptor", "NOMINAL"),
-                is_critical_flag=bool(r.get("is_critical_flag", False)),
+                is_critical_flag=parse_csv_boolean(r.get("is_critical_flag", False)),
             )
             dossier = supervisor.process_task(payload)
             row_dict = dict(r)

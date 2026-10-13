@@ -11,6 +11,15 @@ from .agents import GoldenGateCoordinator
 coordinator = GoldenGateCoordinator()
 
 
+def parse_csv_boolean(value):
+    normalized = str(value).strip().lower()
+    if normalized in ("true", "1", "yes", "y"):
+        return True
+    if normalized in ("false", "0", "no", "n", ""):
+        return False
+    raise ValueError(f"Invalid is_critical_flag value: {value!r}")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="golden-gate-assembly-overhang", description="GoldenGate-Assembler: Type IIS Restriction Overhang Fidelity Agent")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -41,6 +50,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     if args.command == "audit":
+        import math
+        if not math.isfinite(args.primary) or not math.isfinite(args.secondary):
+            parser.error("primary and secondary metrics must be finite")
         payload = FrontierPayload(
             task_id=args.task_id,
             target_identifier=args.target,
@@ -89,7 +101,7 @@ def main(argv=None):
             fieldnames = list(reader.fieldnames or [])
             rows = list(reader)
 
-        out_fields = fieldnames + ["overall_status", "total_alerts", "critical_count", "consensus_summary"]
+        out_fields = list(dict.fromkeys(fieldnames + ["overall_status", "total_alerts", "critical_count", "consensus_summary"]))
         out_rows = []
         for r in rows:
             # Validate metric values
@@ -106,7 +118,7 @@ def main(argv=None):
                 primary_metric=p_val,
                 secondary_metric=s_val,
                 status_descriptor=r.get("status_descriptor", "NOMINAL"),
-                is_critical_flag=bool(r.get("is_critical_flag", False)),
+                is_critical_flag=parse_csv_boolean(r.get("is_critical_flag", False)),
             )
             dossier = coordinator.process(payload)
             row_dict = dict(r)
