@@ -11,7 +11,7 @@ coordinator = GoldenGateCoordinator()
 def create_app():
     try:
         from fastapi import FastAPI
-        from pydantic import BaseModel
+        from pydantic import BaseModel, Field
 
         app = FastAPI(
             title="GoldenGate-Assembler: Type IIS Restriction Overhang Fidelity Agent",
@@ -22,8 +22,8 @@ def create_app():
         class TaskRequest(BaseModel):
             task_id: str = "TASK-2026-001"
             target_identifier: str = "TARGET-BIO-KEY"
-            primary_metric: float = 28.5
-            secondary_metric: float = 14.2
+            primary_metric: float = Field(default=28.5, allow_inf_nan=False, ge=-1e9, le=1e9)
+            secondary_metric: float = Field(default=14.2, allow_inf_nan=False, ge=-1e9, le=1e9)
             status_descriptor: str = "DISCORDANT_ANOMALY"
             is_critical_flag: bool = True
             attributes: Dict[str, Any] = {}
