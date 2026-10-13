@@ -15,7 +15,7 @@ def create_app():
 
         app = FastAPI(
             title="GoldenGate-Assembler: Type IIS Restriction Overhang Fidelity Agent",
-            description="Optimizes 4-base 5'-overhang sets (BsaI/BsmBI), calculating ligation fidelity matrices to guarantee >99% assembly accuracy.",
+            description="Legacy numeric threshold auditing; does not design overhangs or estimate ligation fidelity.",
             version="2.0.0-FRONTIER",
         )
 
