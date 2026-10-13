@@ -37,6 +37,7 @@ function render(result) {
     "Resolve the listed conflicts before using the set.", result.valid ? "success" : "error");
 }
 function screenInput() {
+  if (byId("overhangs").value.length > 4096) return showMessage("Input is too long (maximum 4,096 characters).", "error");
   const sequences = Overhang.parseList(byId("overhangs").value);
   if (!sequences.length) return showMessage("Enter at least one overhang.", "error");
   if (sequences.length > 64) return showMessage("Limit screening to 64 entries.", "error");
@@ -56,7 +57,12 @@ function downloadCsv() {
     r.index, r.sequence, r.reverseComplement, r.gc === null ? "" : r.gc,
     r.nearestDistance === null ? "" : r.nearestDistance, r.errors.join("; "), r.cautions.join("; ")
   ]);
-  const csv = rows.map(row => row.map(value => '"' + String(value).replace(/"/g, '""') + '"').join(",")).join("\r\n") + "\r\n";
+  const quoteCell = value => {
+    const raw = String(value);
+    const safe = /^\s*[=+@-]/.test(raw) ? "'" + raw : raw;
+    return '"' + safe.replace(/"/g, '""') + '"';
+  };
+  const csv = rows.map(row => row.map(quoteCell).join(",")).join("\r\n") + "\r\n";
   const url = URL.createObjectURL(new Blob([csv], {type: "text/csv;charset=utf-8"}));
   const anchor = document.createElement("a");
   anchor.href = url;
