@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Local four-base Golden Gate overhang screening and generation.">
+<title>Golden Gate Overhang Screening</title>
+<style>
+:root{color-scheme:dark;--bg:#0c1322;--card:#152033;--line:#364863;--text:#f2f5fa;--muted:#c1ccdc;--accent:#76c3ff;--warn:#ffd78e;--error:#ffabb4}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}
+a{color:var(--accent)}
+main{max-width:1160px;margin:0 auto;padding:34px 20px}
+header{margin-bottom:28px;border-bottom:1px solid var(--line);padding-bottom:20px}
+h1{font-size:clamp(1.5rem,3.3vw,2.2rem);margin:0 0 8px}
+h2{font-size:1.15rem;margin:0 0 15px}
+p{color:var(--muted);margin:10px 0}
+.kicker{letter-spacing:.13em;font-size:.74rem;color:var(--accent);text-transform:uppercase;font-weight:750}
+.layout{display:grid;grid-template-columns:minmax(285px,0.9fr) minmax(330px,1.4fr);gap:20px;align-items:start}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px}
+label{display:block;margin:16px 0 7px;font-weight:650}
+input,textarea{width:100%;border-radius:7px;border:1px solid #798da8;background:#0c1628;color:var(--text);padding:11px 12px;font:inherit}
+textarea{min-height:130px;resize:vertical;font-family:ui-monospace,Consolas,monospace}
+input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.buttons{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}
+button{background:#176fb6;color:white;padding:10px 15px;font:inherit;font-weight:700;border-radius:7px;border:1px solid #58a8ec;cursor:pointer}
+button.secondary{background:#263954;border-color:#7189a7}
+button:hover:not(:disabled){filter:brightness(1.15)}
+button:disabled{opacity:.45;cursor:not-allowed}
+small{color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:16px}
+.stat{text-align:center;background:#0e192b;border:1px solid var(--line);border-radius:8px;padding:10px}
+.stat strong{display:block;font-size:1.5rem}
+.stat span{font-size:.8rem;color:var(--muted)}
+#message{border-left:3px solid var(--accent);background:#12283e;padding:10px 13px;margin-bottom:17px;min-height:44px}
+#message[data-kind="error"]{border-color:var(--error)}
+#message[data-kind="success"]{border-color:#6fe0b3}
+.scroller{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;vertical-align:top;padding:9px;border-bottom:1px solid var(--line)}
+th{white-space:nowrap;color:var(--muted)}
+td:nth-child(2),td:nth-child(3){font-family:ui-monospace,Consolas,monospace;font-weight:bold}
+tr.warning{color:var(--warn)}
+tr.error{color:var(--error)}
+footer{border-top:1px solid var(--line);padding-top:17px;margin-top:24px;font-size:.9rem}
+@media(max-width:850px){.layout{grid-template-columns:1fr}main{padding:22px 13px}.panel{padding:18px}}
+@media(max-width:490px){.buttons button{flex:1 1 100%}.stat{padding:7px}.stats{gap:6px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="kicker">Synthetic biology · browser sequence screening</div>
+<h1>Golden Gate overhang screening</h1>
+<p>Inspect and generate four-nucleotide Type IIS assembly junctions. Your input stays in this browser.</p></header>
+<div class="layout">
+<section class="panel" aria-labelledby="setup-title">
+<h2 id="setup-title">Junction set</h2>
+<label for="junction-count">Generate junctions (2–16)</label>
+<input id="junction-count" type="number" min="2" max="16" step="1" value="6">
+<div class="buttons"><button id="generate" type="button">Generate candidates</button></div>
+<label for="overhangs">Overhangs, 5′ → 3′</label>
+<textarea id="overhangs" spellcheck="false" aria-describedby="input-help">AATG, GCTT, CGAC, TTAC</textarea>
+<small id="input-help">Use four A/C/G/T bases per entry. Separate entries with commas, spaces, or newlines; maximum 64.</small>
+<div class="buttons"><button id="screen" type="button">Screen set</button><button id="download" class="secondary" type="button" disabled>Export CSV</button></div>
+</section>
+<section class="panel" aria-labelledby="results-title">
+<h2 id="results-title">Sequence checks</h2>
+<div class="stats"><div class="stat"><strong id="count">0</strong><span>Entries</span></div><div class="stat"><strong id="errors">0</strong><span>Conflicts</span></div><div class="stat"><strong id="cautions">0</strong><span>Cautions</span></div></div>
+<div id="message" role="status" aria-live="polite">Enter or generate a sequence set.</div>
+<div class="scroller"><table><thead><tr><th>#</th><th>Overhang</th><th>Reverse complement</th><th>GC</th><th>Nearest distance</th><th>Screening result</th></tr></thead><tbody id="results-body"></tbody></table></div>
+<p><small>Nearest distance: minimum Hamming distance from a row to any other input sequence or its reverse complement (0–4).</small></p>
+</section>
+</div>
+<footer><p><strong>Interpretation:</strong> This is basic sequence screening, not an empirical ligation-fidelity predictor or validated assembly-efficiency estimate. It reports duplicates, palindromes, reverse-complement conflicts, invalid sequences, GC extremes and short homopolymer runs. Enzyme-specific ligation bias, restriction sites, fragment context and junction orientation still require separate assessment.</p>
+<p><strong>Privacy:</strong> All calculations and CSV exports run locally. No input is uploaded, and no analytics or third-party scripts are loaded. <a href="https://github.com/abusuraihsakhri/golden-gate-assembly-overhang">Source repository</a>.</p></footer>
+</main>
+<script src="./overhang.js"></script><script src="./app.js"></script>
+</body>
+</html>
