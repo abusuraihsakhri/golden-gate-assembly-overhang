@@ -28,6 +28,8 @@ jobs:
         run: |
           mkdir -p site
           cp index.html app.js overhang.js site/
+          mkdir -p site/web
+          cp web/index.html site/web/
           touch site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
